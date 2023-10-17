@@ -1,0 +1,6 @@
+type	server	port	user	password
+socks4	1.1.1.1	8080	root	123456
+socks5	8.8.8.8	1080		
+http	8.8.8.8	8081		
+http	www.abc.com	80	hello	world
+https	www.xyz.com	443	dummy	none
