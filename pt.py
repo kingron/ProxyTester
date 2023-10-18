@@ -5,7 +5,15 @@ import sys
 
 import requests
 import socks
-from requests.auth import HTTPBasicAuth
+
+# 有些服务器或者代理会检测 agent 字符串，如果用 curl 之类会禁止访问
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate',
+    'Connection': 'keep-alive',
+}
 
 
 def test_proxy(proxy_info, url):
@@ -21,10 +29,13 @@ def test_proxy(proxy_info, url):
     socket.socket = socks.socksocket
 
     try:
-        response = requests.get(url, timeout=3)
+        response = requests.get(url, timeout=3, headers=headers)
         if response.status_code == 200:
             return True
+        else:
+            print("HTTP Status: " + str(response.status_code))
     except Exception as e:
+        print(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         pass
 
     return False
@@ -46,12 +57,14 @@ def test_proxy2(proxy_info, url):
                 'http': f'{proxy_type}://{server}:{port}',
                 'https': f'{proxy_type}://{server}:{port}'
             }
-        auth = HTTPBasicAuth(user, password)
-        response = requests.get(url, timeout=5, proxies=proxies, auth=auth)
+
+        response = requests.get(url, timeout=30, proxies=proxies, headers=headers)
         if response.status_code == 200:
             return True
+        else:
+            print("HTTP Status: " + str(response.status_code))
     except Exception as e:
-        # print(e.args[0].reason if hasattr(e.args[0], "reason") else e)
+        print(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         pass
 
     return False
@@ -71,7 +84,7 @@ def main(file, url):
                 pwd if pwd != '' else None
             )
 
-            if test_proxy(proxy_info, url):
+            if test_proxy2(proxy_info, url):
                 print(f"OK\t{proxy_info}")
             else:
                 print(f"--\t{proxy_info}")
