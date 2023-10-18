@@ -5,6 +5,7 @@ import sys
 
 import requests
 import socks
+from requests.auth import HTTPBasicAuth
 
 
 def test_proxy(proxy_info, url):
@@ -26,7 +27,7 @@ def test_proxy(proxy_info, url):
     except Exception as e:
         pass
 
-    return True
+    return False
 
 
 def test_proxy2(proxy_info, url):
@@ -45,12 +46,12 @@ def test_proxy2(proxy_info, url):
                 'http': f'{proxy_type}://{server}:{port}',
                 'https': f'{proxy_type}://{server}:{port}'
             }
-
-        response = requests.get(url, timeout=5, proxies=proxies)
+        auth = HTTPBasicAuth(user, password)
+        response = requests.get(url, timeout=5, proxies=proxies, auth=auth)
         if response.status_code == 200:
             return True
     except Exception as e:
-        # print(e.args[0].reason if e.args[0].reason is not None else e)
+        # print(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         pass
 
     return False
@@ -70,7 +71,7 @@ def main(file, url):
                 pwd if pwd != '' else None
             )
 
-            if test_proxy2(proxy_info, url):
+            if test_proxy(proxy_info, url):
                 print(f"OK\t{proxy_info}")
             else:
                 print(f"--\t{proxy_info}")
