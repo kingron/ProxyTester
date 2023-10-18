@@ -65,8 +65,8 @@ socks4	5.6.7.8	1080
 http	www.abc.com	80	dummy	none""")
         sys.exit(1)
 
-    print("Scanning...")
     file = sys.argv[1]
     url = sys.argv[2] if len(sys.argv) > 2 else "https://www.google.com"
 
+    print(f"Scanning for {url} ...")
     main(file, url)
