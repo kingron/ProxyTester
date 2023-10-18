@@ -26,6 +26,33 @@ def test_proxy(proxy_info, url):
     except Exception as e:
         pass
 
+    return True
+
+
+def test_proxy2(proxy_info, url):
+    proxy_type, server, port, user, password = proxy_info
+
+    try:
+        if proxy_type == 'https':
+            proxy_type = 'http'
+        if user and password:
+            proxies = {
+                'http': f'{proxy_type}://{user}:{password}@{server}:{port}',
+                'https': f'{proxy_type}://{user}:{password}@{server}:{port}'
+            }
+        else:
+            proxies = {
+                'http': f'{proxy_type}://{server}:{port}',
+                'https': f'{proxy_type}://{server}:{port}'
+            }
+
+        response = requests.get(url, timeout=5, proxies=proxies)
+        if response.status_code == 200:
+            return True
+    except Exception as e:
+        # print(e.args[0].reason if e.args[0].reason is not None else e)
+        pass
+
     return False
 
 
@@ -33,18 +60,20 @@ def main(file, url):
     with open(file, newline='') as csvfile:
         reader = csv.DictReader(csvfile, delimiter='\t')
         for row in reader:
+            usr = row.get('user', None)
+            pwd = row.get('password', None)
             proxy_info = (
                 row['type'],
                 row['server'],
                 row['port'],
-                row.get('user', ''),
-                row.get('password', '')
+                usr if usr != '' else None,
+                pwd if pwd != '' else None
             )
 
-            if test_proxy(proxy_info, url):
+            if test_proxy2(proxy_info, url):
                 print(f"OK\t{proxy_info}")
             else:
-                print(f"KO\t{proxy_info}")
+                print(f"--\t{proxy_info}")
 
 
 def exit_gracefully(signal, frame):
