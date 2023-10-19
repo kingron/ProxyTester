@@ -105,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument('-u', dest='url', default="https://www.baidu.com",
                         help="target url, default https://www.baidu.com")
     parser.add_argument('-m', dest='mode', type=int, choices=[0, 1], default=0, help="proxy method, 0 = http/https, 1 = socks")
-    parser.add_argument('-t', dest='timeout', type=int, default=5, help="timeout, default 10 second")
+    parser.add_argument('-t', dest='timeout', type=int, default=10, help="timeout, default 10 second")
     parser.add_argument('-a', dest='agent', default=agent, help="User agent string, default:\n" + agent)
     args = parser.parse_args()
     if args.agent is not None:
