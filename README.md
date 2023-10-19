@@ -8,7 +8,7 @@ ProxyTester v0.2
 Copyright (C) Kingron, 2023
 Project: https://github.com/kingron/ProxyTester
 
-usage: pt.py [-h] [-f INFILE] [-n THREADS] [-u URL] [-m {0,1}] [-t TIMEOUT]
+usage: pt.py [-h] [-f INFILE] [-n THREADS] [-u URL] [-t TIMEOUT]
              [-a AGENT]
 
 optional arguments:
@@ -16,7 +16,6 @@ optional arguments:
   -f INFILE   proxy server list file, default: proxy.txt
   -n THREADS  Max concurrent threads count, default 10
   -u URL      target url, default https://www.baidu.com
-  -m {0,1}    proxy method, 0 = http/https, 1 = socks
   -t TIMEOUT  timeout, default 10 second
   -a AGENT    User agent string, default:
               Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46
