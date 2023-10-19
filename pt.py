@@ -2,10 +2,11 @@ import argparse
 import concurrent.futures
 import csv
 import datetime
+import os
 import re
 import signal
 import socket
-import sys
+from time import sleep
 
 import requests
 import socks
@@ -20,7 +21,6 @@ help_text = """File format(Tab separator), type value: socks4 | socks5 | http | 
     https	www.xyz.com	443		
     http	www.abc.com	80	dummy	none
 """
-executor = 0
 
 
 def test_proxy(proxy_info, url, mode=0, timeout=5):
@@ -83,9 +83,9 @@ def test_task(proxy_info, url, mode, timeout):
 
 def main(file, url, mode, timeout, threads):
     with open(file, newline='') as csvfile:
-        global executor
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=threads)
         reader = csv.DictReader(csvfile, delimiter='\t')
+        futures = []
         for row in reader:
             usr = row.get('user', None)
             pwd = row.get('password', None)
@@ -96,15 +96,17 @@ def main(file, url, mode, timeout, threads):
                 usr if usr != '' else None,
                 pwd if pwd != '' else None
             )
-            executor.submit(test_task, proxy_info, url, mode, timeout)
+            futures.append(executor.submit(test_task, proxy_info, url, mode, timeout))
+        while True:  # 等待所有任务完成
+            completed = [future for future in futures if future.done()]
+            if len(completed) == len(futures):
+                break
+            sleep(1)
 
 
 def exit_gracefully(signal, frame):
     print("Ctrl+C pressed...")
-    global executor
-    if executor is not None:
-        executor.shutdown(wait=False, cancel_futures=True)
-    sys.exit(0)
+    os._exit(0)
 
 
 signal.signal(signal.SIGINT, exit_gracefully)
