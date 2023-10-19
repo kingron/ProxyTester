@@ -1,5 +1,7 @@
 import argparse
+import concurrent.futures
 import csv
+import datetime
 import re
 import signal
 import socket
@@ -18,6 +20,7 @@ help_text = """File format(Tab separator), type value: socks4 | socks5 | http | 
     https	www.xyz.com	443		
     http	www.abc.com	80	dummy	none
 """
+executor = 0
 
 
 def test_proxy(proxy_info, url, mode=0, timeout=5):
@@ -71,8 +74,17 @@ def test_proxy(proxy_info, url, mode=0, timeout=5):
         return ['×', s]
 
 
-def main(file, url, mode, timeout):
+def test_task(proxy_info, url, mode, timeout):
+    result, message = test_proxy(proxy_info, url, mode, timeout)
+    message = re.sub(r'\r\n|\r|\n', ' ', message)
+    host = proxy_info[1] + ":" + proxy_info[2]
+    print(f"{result} {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\t{proxy_info[0]:8}{host[:20]:22}\t{message}")
+
+
+def main(file, url, mode, timeout, threads):
     with open(file, newline='') as csvfile:
+        global executor
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=threads)
         reader = csv.DictReader(csvfile, delimiter='\t')
         for row in reader:
             usr = row.get('user', None)
@@ -84,14 +96,14 @@ def main(file, url, mode, timeout):
                 usr if usr != '' else None,
                 pwd if pwd != '' else None
             )
-
-            result, message = test_proxy(proxy_info, url, mode, timeout)
-            message = re.sub(r'\r\n|\r|\n', ' ', message)
-            host = proxy_info[1] + ":" + proxy_info[2]
-            print(f"{result} {proxy_info[0]:8}{host[:20]:22}\t{message}")
+            executor.submit(test_task, proxy_info, url, mode, timeout)
 
 
 def exit_gracefully(signal, frame):
+    print("Ctrl+C pressed...")
+    global executor
+    if executor is not None:
+        executor.shutdown(wait=False, cancel_futures=True)
     sys.exit(0)
 
 
@@ -102,9 +114,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parser.epilog = help_text
     parser.add_argument('-f', dest='infile', help="proxy server list file, default: proxy.txt", default="proxy.txt")
+    parser.add_argument('-n', dest='threads', type=int, help="Max concurrent threads count, default 10", default=10)
     parser.add_argument('-u', dest='url', default="https://www.baidu.com",
                         help="target url, default https://www.baidu.com")
-    parser.add_argument('-m', dest='mode', type=int, choices=[0, 1], default=0, help="proxy method, 0 = http/https, 1 = socks")
+    parser.add_argument('-m', dest='mode', type=int, choices=[0, 1], default=0,
+                        help="proxy method, 0 = http/https, 1 = socks")
     parser.add_argument('-t', dest='timeout', type=int, default=10, help="timeout, default 10 second")
     parser.add_argument('-a', dest='agent', default=agent, help="User agent string, default:\n" + agent)
     args = parser.parse_args()
@@ -112,4 +126,4 @@ if __name__ == "__main__":
         agent = args.agent
 
     print(f"Scanning for {args.url} with timeout {args.timeout}s ...")
-    main(args.infile, args.url, args.mode, args.timeout)
+    main(args.infile, args.url, args.mode, args.timeout, args.threads)
