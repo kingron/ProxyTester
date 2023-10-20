@@ -5,6 +5,7 @@ import datetime
 import os
 import re
 import signal
+import time
 from time import sleep
 
 import requests
@@ -22,6 +23,15 @@ help_text = """File format(Tab separator), type value: socks4 | socks5 | http | 
     https	www.xyz.com	443		
     http	www.abc.com	80	dummy	none
 """
+
+
+def get_speed(bytes_per_second):
+    if bytes_per_second >= 1e6:  # 大于等于1兆字节/秒
+        return f"{bytes_per_second / 1e6:.2f} MB/s"
+    elif bytes_per_second >= 1e3:  # 大于等于1千字节/秒
+        return f"{bytes_per_second / 1e3:.2f} KB/s"
+    else:
+        return f"{bytes_per_second:.2f} B/s"
 
 
 def test_proxy(proxy_info, url, timeout=5):
@@ -46,30 +56,41 @@ def test_proxy(proxy_info, url, timeout=5):
                 'https': f'{proxy_type}://{server}:{port}'
             }
 
+        start = time.time()
         response = requests.get(url, timeout=timeout, headers=headers, proxies=proxies, verify=False)
+        duration = time.time() - start  # float seconds
+        speed = get_speed(len(response.content) / duration)
 
         preview = response.content if len(response.content) < 100 else response.content[:100] + b"..."
         preview = preview.decode('utf-8')
         if response.status_code == 200:
-            return ['√', preview]
+            return ['√', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
         else:
-            return ['？', "HTTP " + str(response.status_code) + ": " + preview]
+            return ['？', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), "HTTP " + str(response.status_code) + ": " + preview]
     except Exception as e:
         s = str(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         s = re.sub(pattern, '', s).strip()
         if s.startswith("(") and s.endswith(")"):
             s = s[1:-1]  # 去掉前后 (...)
-        return ['×', s]
+        if s.startswith("'") and s.endswith("'"):
+            s = s[1:-1]  # 去掉前后 (...)
+        s = s.replace("'Cannot connect to proxy.',", "Proxy error,")
+        s = s.replace("Failed to establish a new connection: ", "")
+        return ['×', '     ', '        ', s]
 
 
 def test_task(proxy_info, url, timeout):
-    result, message = test_proxy(proxy_info, url, timeout)
+    result, duration, speed, message = test_proxy(proxy_info, url, timeout)
     message = re.sub(r'\r\n|\r|\n', ' ', message)
     host = proxy_info[1] + ":" + proxy_info[2]
-    print(f"{result} {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\t{proxy_info[0]:8}{host[:20]:22}\t{message}")
+    print(f"{result} {datetime.datetime.now():%m-%d %H:%M:%S} {proxy_info[0]:7}{host}\t{duration}\t{speed}\t{message}")
 
 
 def main(file, url, timeout, threads):
+    if not os.path.exists(file):
+        return
+
+    print(f"Scanning for {args.url} with timeout {args.timeout}s and {args.threads} worker(s)...")
     with open(file, newline='') as csvfile:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=threads)
         reader = csv.DictReader(csvfile, delimiter='\t')
@@ -113,5 +134,4 @@ if __name__ == "__main__":
     if args.agent is not None:
         agent = args.agent
 
-    print(f"Scanning for {args.url} with timeout {args.timeout}s and {args.threads} worker(s)...")
     main(args.infile, args.url, args.timeout, args.threads)
