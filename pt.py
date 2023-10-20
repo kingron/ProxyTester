@@ -9,6 +9,8 @@ from time import sleep
 
 import requests
 
+requests.packages.urllib3.disable_warnings(requests.urllib3.exceptions.InsecureRequestWarning)
+
 # 有些服务器或者代理会检测 agent 字符串，如果用 curl 之类会禁止访问
 agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46'
 pattern = r'<urllib3\..+ object at 0x[0-9A-Fa-f]+>[,|:]\s+'
@@ -45,7 +47,7 @@ def test_proxy(proxy_info, url, timeout=5):
                 'https': f'{proxy_type}://{server}:{port}'
             }
 
-        response = requests.get(url, timeout=timeout, headers=headers, proxies=proxies)
+        response = requests.get(url, timeout=timeout, headers=headers, proxies=proxies, verify=False)
 
         preview = response.content if len(response.content) < 100 else response.content[:100] + b"..."
         preview = preview.decode('utf-8')
