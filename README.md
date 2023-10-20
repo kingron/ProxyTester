@@ -33,6 +33,7 @@ File format(Tab separator), type value: socks4 | socks5 | http | https:
 
 ## requirements
 - please install requests_httsproxy module from here: https://github.com/savandriy/requests_httpsproxy, download source, and open cmd of the source folder, and run `pip install .`
+- if using python >= 3.11 or higher, it required requests==2.0.7; if using python <= 3.7, please using requests==1.26.6
 
 ## Reference
 - https://www.chromium.org/developers/design-documents/secure-web-proxy/
