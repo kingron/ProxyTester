@@ -8,8 +8,9 @@ import signal
 from time import sleep
 
 import requests
+import urllib3
 
-requests.packages.urllib3.disable_warnings(requests.urllib3.exceptions.InsecureRequestWarning)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # 有些服务器或者代理会检测 agent 字符串，如果用 curl 之类会禁止访问
 agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46'
@@ -34,8 +35,6 @@ def test_proxy(proxy_info, url, timeout=5):
         'Connection': 'keep-alive',
     }
     try:
-        if proxy_type == 'https':
-            proxy_type = 'http'
         if user and password:
             proxies = {
                 'http': f'{proxy_type}://{user}:{password}@{server}:{port}',
@@ -54,7 +53,7 @@ def test_proxy(proxy_info, url, timeout=5):
         if response.status_code == 200:
             return ['√', preview]
         else:
-            return ['?', "HTTP " + str(response.status_code) + ": " + preview]
+            return ['？', "HTTP " + str(response.status_code) + ": " + preview]
     except Exception as e:
         s = str(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         s = re.sub(pattern, '', s).strip()

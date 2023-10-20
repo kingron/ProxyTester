@@ -30,3 +30,9 @@ File format(Tab separator), type value: socks4 | socks5 | http | https:
 ```
 ## screenshots
 ![img.png](screen.png)
+
+## requirements
+- please install requests_httsproxy module from here: https://github.com/savandriy/requests_httpsproxy, download source, and open cmd of the source folder, and run `pip install .`
+
+## Reference
+- https://www.chromium.org/developers/design-documents/secure-web-proxy/
