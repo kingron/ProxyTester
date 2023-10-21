@@ -10,6 +10,7 @@ from time import sleep
 
 import requests
 import urllib3
+from bs4 import BeautifulSoup
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -25,42 +26,61 @@ help_text = """File format(Tab separator), type value: socks4 | socks5 | http | 
 """
 
 
+def get_proxies(url):
+    headers = {
+        'User-Agent': agent,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-US;q=0.7',
+        'Connection': 'Disconnect'
+    }
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        text = BeautifulSoup(response.text, 'html.parser').get_text()
+        pat = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::|\t|\s*,\s*|\s+)(\d{1,5})'
+        matches = re.findall(pat, text)
+        if not matches or len(matches) <= 3:    # 小于3个的一般可能是误扫描了，正常一个网站一般不会少于10个
+            pat = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\D*(\d{1,5})'
+            matches = re.findall(pat, response.text)
+
+        return list(set(f'{ip}:{port}' for ip, port in matches))
+    return []
+
+
 def download_proxies(file_name: str, api_url) -> bool:
     paths = [
+        'https://github.com/fate0/proxylist/blob/master/proxy.list',
+        'https://openproxy.space/list/http',
         'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=https&timeout=10000&country=all&ssl=all&anonymity=all',
         'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
         'https://www.proxy-list.download/api/v1/get?type=http',
-        'https://www.proxy-list.download/api/v1/get?type=https'
+        'https://www.proxy-list.download/api/v1/get?type=https',
+        'https://free-proxy-list.net/',
+        'https://www.kuaidaili.com/free/',
+        'https://hidemy.io/cn/proxy-list/',
+        'http://proxydb.net/',
     ] if api_url is None else [api_url]
     proxies = []
     for path in paths:
+        print(f'Fetching proxies from {path.split("/")[2]}...', end='\r')
         try:
-            print(f'Downloading proxies from {path.split("/")[2]}...', end='\r')
-            response = requests.get(path)
-            if response.status_code == 200:
-                proxies += response.text.split('\r\n')
-                print(f'Downloaded proxies from {path.split("/")[2]}                   ')
+            ret = get_proxies(path)
+            proxies += ret
+            print(f'Fetch proxies from {path.split("/")[2]} success, get {len(ret)} server(s)   ')
         except Exception:
             print(f'Downloaded proxies from {path.split("/")[2]} failed                 ')
 
     if proxies:
-        unique_proxies = []
-        for proxy in proxies:
-            if len(proxy) > 21:
-                # Invalid proxy (longer than 255.255.255.255:65535)
-                continue
-            if proxy not in unique_proxies:
-                unique_proxies.append(proxy)
-
         if not os.path.exists(file_name):
             with open(file_name, 'w', encoding='utf-8'):
                 pass  # 什么也不写入，只是创建一个空文件
         is_empty = os.path.getsize(file_name) == 0
+
         with open(file_name, 'a', encoding='utf-8') as file:
             if is_empty:  # 文件为空，增加内容到开头
                 file.write("type	server	port	user	password\n")
             file.write('\n')
-            for proxy in unique_proxies:
+            for proxy in set(proxies):
                 if proxy != '':
                     file.write('\nhttp\t' + proxy.replace(':', '\t'))
             file.write('\n')
@@ -108,10 +128,10 @@ def test_proxy(proxy_info, url, timeout=5):
         if response.status_code != 200:
             preview = "HTTP " + str(response.status_code) + ": " + preview
 
-        return ['√' if response.status_code == 200 else '？', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
+        return ['√' if response.status_code == 200 else '¤', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
     except Exception as e:
         if isinstance(e, ValueError) and str(e) == 'check_hostname requires server_hostname':
-            return ['×', '      ', '            ', 'Wrong proxy type, should be HTTP but HTTPS used']
+            return ['※', '      ', '            ', 'Wrong proxy type, should be HTTP but HTTPS used']
 
         s = str(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         s = re.sub(pattern, '', s).strip()
