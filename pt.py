@@ -25,6 +25,48 @@ help_text = """File format(Tab separator), type value: socks4 | socks5 | http | 
 """
 
 
+def download_proxies(file_name: str, api_url) -> bool:
+    paths = [
+        'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=https&timeout=10000&country=all&ssl=all&anonymity=all',
+        'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
+        'https://www.proxy-list.download/api/v1/get?type=http',
+        'https://www.proxy-list.download/api/v1/get?type=https'
+    ] if api_url is None else [api_url]
+    proxies = []
+    for path in paths:
+        try:
+            print(f'Downloading proxies from {path.split("/")[2]}...', end='\r')
+            response = requests.get(path)
+            if response.status_code == 200:
+                proxies += response.text.split('\r\n')
+                print(f'Downloaded proxies from {path.split("/")[2]}                   ')
+        except Exception:
+            print(f'Downloaded proxies from {path.split("/")[2]} failed                 ')
+
+    if proxies:
+        unique_proxies = []
+        for proxy in proxies:
+            if len(proxy) > 21:
+                # Invalid proxy (longer than 255.255.255.255:65535)
+                continue
+            if proxy not in unique_proxies:
+                unique_proxies.append(proxy)
+
+        if not os.path.exists(file_name):
+            with open(file_name, 'w', encoding='utf-8'):
+                pass  # 什么也不写入，只是创建一个空文件
+        is_empty = os.path.getsize(file_name) == 0
+        with open(file_name, 'a', encoding='utf-8') as file:
+            if is_empty:  # 文件为空，增加内容到开头
+                file.write("type	server	port	user	password\n")
+            file.write('\n')
+            for proxy in unique_proxies:
+                if proxy != '':
+                    file.write('\nhttp\t' + proxy.replace(':', '\t'))
+            file.write('\n')
+    return True
+
+
 def get_speed(bytes_per_second):
     if bytes_per_second >= 1e6:  # 大于等于1兆字节/秒
         return f"{bytes_per_second / 1e6:.2f} MB/s"
@@ -63,30 +105,37 @@ def test_proxy(proxy_info, url, timeout=5):
 
         preview = response.content if len(response.content) < 100 else response.content[:100] + b"..."
         preview = preview.decode('utf-8')
-        if response.status_code == 200:
-            return ['√', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
-        else:
-            return ['？', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), "HTTP " + str(response.status_code) + ": " + preview]
+        if response.status_code != 200:
+            preview = "HTTP " + str(response.status_code) + ": " + preview
+
+        return ['√' if response.status_code == 200 else '？', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
     except Exception as e:
+        if isinstance(e, ValueError) and str(e) == 'check_hostname requires server_hostname':
+            return ['×', '      ', '            ', 'Wrong proxy type, should be HTTP but HTTPS used']
+
         s = str(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         s = re.sub(pattern, '', s).strip()
         if s.startswith("(") and s.endswith(")"):
             s = s[1:-1]  # 去掉前后 (...)
         if s.startswith("'") and s.endswith("'"):
-            s = s[1:-1]  # 去掉前后 (...)
+            s = s[1:-1]  # 去掉前后 '...'
         s = s.replace("'Cannot connect to proxy.',", "Proxy error,")
         s = s.replace("Failed to establish a new connection: ", "")
-        return ['×', '     ', '        ', s]
+        return ['×', '      ', '            ', s]
 
 
-def test_task(proxy_info, url, timeout):
+def test_task(proxy_info, url, timeout, out):
     result, duration, speed, message = test_proxy(proxy_info, url, timeout)
     message = re.sub(r'\r\n|\r|\n', ' ', message)
     host = proxy_info[1] + ":" + proxy_info[2]
-    print(f"{result} {datetime.datetime.now():%m-%d %H:%M:%S} {proxy_info[0]:7}{host}\t{duration}\t{speed}\t{message}")
+    print(
+        f"{result} {datetime.datetime.now():%m-%d %H:%M:%S} {proxy_info[0]:7}  {host:21}  {duration}  {speed:13}  {message}")
+    if out is not None and result == '√':
+        out.write(f'{proxy_info[0]}://{host}\t{duration.strip()}\t{speed.strip()}\n')
+        out.flush()
 
 
-def main(file, url, timeout, threads):
+def main(file, url, timeout, threads, out):
     if not os.path.exists(file):
         return
 
@@ -105,7 +154,7 @@ def main(file, url, timeout, threads):
                 usr if usr != '' else None,
                 pwd if pwd != '' else None
             )
-            futures.append(executor.submit(test_task, proxy_info, url, timeout))
+            futures.append(executor.submit(test_task, proxy_info, url, timeout, out))
         while True:  # 等待所有任务完成
             completed = [future for future in futures if future.done()]
             if len(completed) == len(futures):
@@ -120,7 +169,7 @@ def exit_gracefully(signal, frame):
 
 signal.signal(signal.SIGINT, exit_gracefully)
 if __name__ == "__main__":
-    print("ProxyTester v0.2\nCopyright (C) Kingron, 2023")
+    print("Hound Proxy Tester v0.2\nCopyright (C) Kingron, 2023")
     print("Project: https://github.com/kingron/ProxyTester\n")
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parser.epilog = help_text
@@ -130,8 +179,17 @@ if __name__ == "__main__":
                         help="target url, default https://www.baidu.com")
     parser.add_argument('-t', dest='timeout', type=int, default=10, help="timeout, default 10 second")
     parser.add_argument('-a', dest='agent', default=agent, help="User agent string, default:\n" + agent)
+    parser.add_argument('-o', dest='out', help="output file for good proxy")
+    parser.add_argument('-d', dest="download", nargs='?', const='default',
+                        help="Fetch free proxy from url DOWNLOAD, append to file which set by -f argument\n"
+                             "The file lines format is ip:port")
     args = parser.parse_args()
+
     if args.agent is not None:
         agent = args.agent
 
-    main(args.infile, args.url, args.timeout, args.threads)
+    if args.download is not None:
+        download_proxies(args.infile, args.download if args.download != 'default' else None)
+
+    outfile = open(args.out, 'w', encoding='utf-8') if args.out else None
+    main(args.infile, args.url, args.timeout, args.threads, outfile)

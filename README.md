@@ -1,4 +1,4 @@
-# ProxyTester
+# Hound Proxy Tester
 
 - Test proxy server available by given url
 - 通过访问给定URL地址来实测代理服务器的可用性
