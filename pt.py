@@ -26,7 +26,7 @@ help_text = """File format(Tab separator), type value: socks4 | socks5 | http | 
 """
 
 
-def get_proxies(url):
+def get_proxies(schema, url):
     headers = {
         'User-Agent': agent,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -39,32 +39,36 @@ def get_proxies(url):
         text = BeautifulSoup(response.text, 'html.parser').get_text()
         pat = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::|\t|\s*,\s*|\s+)(\d{1,5})'
         matches = re.findall(pat, text)
-        if not matches or len(matches) <= 3:    # 小于3个的一般可能是误扫描了，正常一个网站一般不会少于10个
+        if not matches or len(matches) <= 3:  # 小于3个的一般可能是误扫描了，正常一个网站一般不会少于10个
             pat = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\D*(\d{1,5})'
             matches = re.findall(pat, response.text)
 
-        return list(set(f'{ip}:{port}' for ip, port in matches))
+        return list(set(f'{schema}:{ip}:{port}' for ip, port in matches))
     return []
 
 
 def download_proxies(file_name: str, api_url) -> bool:
     paths = [
-        'https://github.com/fate0/proxylist/blob/master/proxy.list',
-        'https://openproxy.space/list/http',
-        'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=https&timeout=10000&country=all&ssl=all&anonymity=all',
-        'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
-        'https://www.proxy-list.download/api/v1/get?type=http',
-        'https://www.proxy-list.download/api/v1/get?type=https',
-        'https://free-proxy-list.net/',
-        'https://www.kuaidaili.com/free/',
-        'https://hidemy.io/cn/proxy-list/',
-        'http://proxydb.net/',
-    ] if api_url is None else [api_url]
+        ['socks5', 'https://www.proxy-list.download/api/v1/get?type=socks5'],
+        ['socks5', 'https://openproxy.space/list/socks5'],
+        ['http', 'https://github.com/fate0/proxylist/blob/master/proxy.list'],
+        ['http', 'https://openproxy.space/list/http'],
+        ['https', 'https://openproxy.space/list/https'],
+        ['http', 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=https&timeout=10000&country=all&ssl=all&anonymity=all'],
+        ['http', 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all'],
+        ['http', 'https://www.proxy-list.download/api/v1/get?type=http'],
+        ['https', 'https://www.proxy-list.download/api/v1/get?type=https'],
+        ['http', 'https://free-proxy-list.net/'],
+        ['http', 'https://www.kuaidaili.com/free/'],
+        ['http', 'https://hidemy.io/cn/proxy-list/'],
+        ['http', 'http://proxydb.net/'],
+    ] if api_url is None else [['http', api_url]]
     proxies = []
-    for path in paths:
+    for one in paths:
+        schema, path = one
         print(f'Fetching proxies from {path.split("/")[2]}...', end='\r')
         try:
-            ret = get_proxies(path)
+            ret = get_proxies(schema, path)
             proxies += ret
             print(f'Fetch proxies from {path.split("/")[2]} success, get {len(ret)} server(s)   ')
         except Exception:
@@ -82,7 +86,7 @@ def download_proxies(file_name: str, api_url) -> bool:
             file.write('\n')
             for proxy in set(proxies):
                 if proxy != '':
-                    file.write('\nhttp\t' + proxy.replace(':', '\t'))
+                    file.write('\n' + proxy.replace(':', '\t'))
             file.write('\n')
     return True
 
