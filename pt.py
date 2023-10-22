@@ -11,6 +11,7 @@ from time import sleep
 import requests
 import urllib3
 from bs4 import BeautifulSoup
+from requests.exceptions import SSLError
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -138,6 +139,8 @@ def test_proxy(proxy_info, url, timeout=5):
     except Exception as e:
         if isinstance(e, ValueError) and str(e) == 'check_hostname requires server_hostname':
             return ['※', '      ', '            ', 'Wrong proxy type, should be HTTP but HTTPS used']
+        if isinstance(e, SSLError) and 'WRONG_VERSION_NUMBER' in str(e):
+            return ['※', '      ', '            ', 'Wrong proxy type, should be HTTPS but HTTP used']
 
         s = str(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         s = re.sub(pattern, '', s).strip()
@@ -217,5 +220,5 @@ if __name__ == "__main__":
     if args.download is not None:
         download_proxies(args.infile, args.download if args.download != 'default' else None)
 
-    outfile = open(args.out, 'w', encoding='utf-8') if args.out else None
+    outfile = open(args.out, 'a', encoding='utf-8') if args.out else None
     main(args.infile, args.url, args.timeout, args.threads, outfile)
