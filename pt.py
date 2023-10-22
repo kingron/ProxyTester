@@ -44,7 +44,7 @@ def get_proxies(schema, url):
             pat = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\D*(\d{1,5})'
             matches = re.findall(pat, response.text)
 
-        return list(set(f'{schema}:{ip}:{port}' for ip, port in matches))
+        return list(set(f'{schema}:{ip}:{port}' for ip, port in matches if port < 65535))
     return []
 
 
