@@ -44,7 +44,7 @@ def get_proxies(schema, url):
             pat = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\D*(\d{1,5})'
             matches = re.findall(pat, response.text)
 
-        return list(set(f'{schema}:{ip}:{port}' for ip, port in matches if port < 65535))
+        return list(set(f'{schema}:{ip}:{port}' for ip, port in matches if int(port) < 65535))
     return []
 
 
@@ -74,7 +74,7 @@ def download_proxies(file_name: str, api_url) -> bool:
             ret = get_proxies(schema, path)
             proxies += ret
             print(f'Fetch proxies from {path.split("/")[2]} success, get {len(ret)} server(s)   ')
-        except Exception:
+        except Exception as e:
             print(f'Fetch proxies from {path.split("/")[2]} failed                 ')
 
     if proxies:
