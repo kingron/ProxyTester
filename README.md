@@ -27,6 +27,9 @@ The Hound proxy tester that allows you test your proxies(http/https/socks4/socks
 - 错误代理类型检测和报告功能，一般以 IP 给出来的服务器都是 http 类型的代理，但许多代理供应商都错误标示了代理服务器类型为 https，实际上仅仅是支持通过 http 代理访问 https 网站(HTTP/HTTPS over HTTP)而已，这和真正的 https 代理（HTTP/HTTPS over HTTPS）是完全不同的概念，真正的 https 代理，是需要域名和SSL证书来支持的，并且你和代理服务器之间的通信是完全保密的。
 
 ## usage
+
+Just run `python pt.py -d -o result.txt`, you will get a list of working proxies servers. 
+
 ```
 Hound Proxy Tester v0.2
 Copyright (C) Kingron, 2023
@@ -58,8 +61,9 @@ File format(Tab separator), type value: socks4 | socks5 | http | https:
 ![img.png](screen.png)
 
 ## requirements
-- please install requests_httsproxy module from here: https://github.com/savandriy/requests_httpsproxy, download source, and open cmd of the source folder, and run `pip install .`
+- ~~please install requests_httsproxy module from here: https://github.com/savandriy/requests_httpsproxy, download source, and open cmd of the source folder, and run `pip install .`~~
 - if using python >= 3.11 or higher, it required requests==2.0.7; if using python <= 3.7, please using requests==1.26.6
+- run `pip install -r requirements.txt` then run `python pt.py`
 
 ## Reference
 - https://www.chromium.org/developers/design-documents/secure-web-proxy/

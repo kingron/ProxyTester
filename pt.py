@@ -62,6 +62,8 @@ def download_proxies(file_name: str, api_url) -> bool:
         ['http', 'https://www.kuaidaili.com/free/'],
         ['http', 'https://hidemy.io/cn/proxy-list/'],
         ['http', 'http://proxydb.net/'],
+        ['http', 'https://www.aliveproxy.com/proxy-list-port-8080/'],
+        ['http', 'https://www.aliveproxy.com/proxy-list-port-8000/'],
     ] if api_url is None else [['http', api_url]]
     proxies = []
     for one in paths:
@@ -72,7 +74,7 @@ def download_proxies(file_name: str, api_url) -> bool:
             proxies += ret
             print(f'Fetch proxies from {path.split("/")[2]} success, get {len(ret)} server(s)   ')
         except Exception:
-            print(f'Downloaded proxies from {path.split("/")[2]} failed                 ')
+            print(f'Fetch proxies from {path.split("/")[2]} failed                 ')
 
     if proxies:
         if not os.path.exists(file_name):
