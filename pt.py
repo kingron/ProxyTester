@@ -5,6 +5,7 @@ import datetime
 import os
 import re
 import signal
+import socket
 import time
 from time import sleep
 
@@ -94,6 +95,18 @@ def download_proxies(file_name: str, api_url) -> bool:
     return True
 
 
+def is_valid_ip(ip):
+    try:
+        socket.inet_pton(socket.AF_INET, ip)
+        return True
+    except socket.error:
+        try:
+            socket.inet_pton(socket.AF_INET6, ip)
+            return True
+        except socket.error:
+            return False
+
+
 def get_speed(bytes_per_second):
     if bytes_per_second >= 1e6:  # 大于等于1兆字节/秒
         return f"{bytes_per_second / 1e6:.2f} MB/s"
@@ -103,7 +116,7 @@ def get_speed(bytes_per_second):
         return f"{bytes_per_second:.2f} B/s"
 
 
-def test_proxy(proxy_info, url, timeout=5):
+def test_proxy(proxy_info, url, verify, timeout=5):
     proxy_type, server, port, user, password = proxy_info
 
     headers = {
@@ -124,6 +137,12 @@ def test_proxy(proxy_info, url, timeout=5):
                 'http': f'{proxy_type}://{server}:{port}',
                 'https': f'{proxy_type}://{server}:{port}'
             }
+
+        if verify and server != '127.0.0.1' and server.lower() != 'localhost':
+            response = requests.get(verify, timeout=timeout, headers=headers, proxies=proxies, verify=False)
+            ext_ip = response.content.decode('utf-8')
+            if ext_ip != (server if is_valid_ip(server) else socket.gethostbyname(server)):
+                return ['×', '      ', '            ', f'IP verify failed, expect: {server}, got: {ext_ip}']
 
         start = time.time()
         response = requests.get(url, timeout=timeout, headers=headers, proxies=proxies, verify=False)
@@ -153,8 +172,8 @@ def test_proxy(proxy_info, url, timeout=5):
         return ['×', '      ', '            ', s]
 
 
-def test_task(proxy_info, url, timeout, out):
-    result, duration, speed, message = test_proxy(proxy_info, url, timeout)
+def test_task(proxy_info, url, timeout, out, verify):
+    result, duration, speed, message = test_proxy(proxy_info, url, verify, timeout)
     message = re.sub(r'\r\n|\r|\n', ' ', message)
     host = proxy_info[1] + ":" + proxy_info[2]
     print(
@@ -164,7 +183,7 @@ def test_task(proxy_info, url, timeout, out):
         out.flush()
 
 
-def main(file, url, timeout, threads, out):
+def main(file, url, timeout, threads, out, verify):
     if not os.path.exists(file):
         return
 
@@ -183,7 +202,7 @@ def main(file, url, timeout, threads, out):
                 usr if usr != '' else None,
                 pwd if pwd != '' else None
             )
-            futures.append(executor.submit(test_task, proxy_info, url, timeout, out))
+            futures.append(executor.submit(test_task, proxy_info, url, timeout, out, verify))
         while True:  # 等待所有任务完成
             completed = [future for future in futures if future.done()]
             if len(completed) == len(futures):
@@ -198,15 +217,17 @@ def exit_gracefully(signal, frame):
 
 signal.signal(signal.SIGINT, exit_gracefully)
 if __name__ == "__main__":
-    print("Hound Proxy Tester v0.2\nCopyright (C) Kingron, 2023")
+    print("Hound Proxy Tester v0.3\nCopyright (C) Kingron, 2023")
     print("Project: https://github.com/kingron/ProxyTester\n")
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parser.epilog = help_text
     parser.add_argument('-f', dest='infile', help="proxy server list file, default: proxy.txt", default="proxy.txt")
     parser.add_argument('-n', dest='threads', type=int, help="Max concurrent threads count, default 10", default=10)
-    parser.add_argument('-u', dest='url', default="https://www.baidu.com",
+    parser.add_argument('-u', dest='url', const="https://www.baidu.com", nargs='?', default='https://www.baidu.com',
                         help="target url, default https://www.baidu.com")
     parser.add_argument('-t', dest='timeout', type=int, default=10, help="timeout, default 10 second")
+    parser.add_argument('-v', dest='verify_url', const='https://api.ipify.org/', nargs='?',
+                        help="Verify external ip address if match the proxy or not, default: https://api.ipify.org/")
     parser.add_argument('-a', dest='agent', default=agent, help="User agent string, default:\n" + agent)
     parser.add_argument('-o', dest='out', help="output file for good proxy")
     parser.add_argument('-d', dest="download", nargs='?', const='default',
@@ -221,4 +242,4 @@ if __name__ == "__main__":
         download_proxies(args.infile, args.download if args.download != 'default' else None)
 
     outfile = open(args.out, 'a', encoding='utf-8') if args.out else None
-    main(args.infile, args.url, args.timeout, args.threads, outfile)
+    main(args.infile, args.url, args.timeout, args.threads, outfile, args.verify_url)
