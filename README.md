@@ -14,6 +14,7 @@ The Hound proxy tester that allows you test your proxies(http/https/socks4/socks
 - Allow download/update proxy list from internet by given url or builtin free server, any internet proxy service provider website page or API was supported.
 - Export passed proxies list into file
 - Report if proxy type is wrong, for example report `Wrong proxy type, should be HTTP but HTTPS used` if set as https but the proxy server is HTTP.
+- Support to verify external ip address if match the proxy or not
 
 <hr/>
 
@@ -25,37 +26,32 @@ The Hound proxy tester that allows you test your proxies(http/https/socks4/socks
 - 允许从互联网更新/下载代理服务器列表，程序内置了一份免费的列表可以使用。你可以指定下载地址，任意的互联网代理服务商的网页、API等均可以使用。它会智能提取网页上所有代理服务器的IP地址和端口并生成列表保存，而无论是何种网页格式。
 - 支持输出测试成功的代理服务器列表到文件
 - 错误代理类型检测和报告功能，一般以 IP 给出来的服务器都是 http 类型的代理，但许多代理供应商都错误标示了代理服务器类型为 https，实际上仅仅是支持通过 http 代理访问 https 网站(HTTP/HTTPS over HTTP)而已，这和真正的 https 代理（HTTP/HTTPS over HTTPS）是完全不同的概念，真正的 https 代理，是需要域名和SSL证书来支持的，并且你和代理服务器之间的通信是完全保密的。
+- 支持验证设置代理后的IP地址验证是否与预期一致，你可以提供一个第三方的IP地址返回API接口（纯IP文本），程序内置了 https://api.ipify.org/
 
 ## usage
 
 Just run `python pt.py -d -o result.txt`, you will get a list of working proxies servers. 
 
 ```
-Hound Proxy Tester v0.2
+Hound Proxy Tester v0.3    
 Copyright (C) Kingron, 2023
 Project: https://github.com/kingron/ProxyTester
 
-usage: pt.py [-h] [-f INFILE] [-n THREADS] [-u URL] [-t TIMEOUT] [-a AGENT]
-             [-o OUT] [-d [DOWNLOAD]]
+usage: pt.py [-h] [-f INFILE] [-n THREADS] [-u [URL]] [-t TIMEOUT] [-v [VERIFY_URL]] [-a AGENT] [-o OUT] [-d [DOWNLOAD]]
 
-optional arguments:
-  -h, --help     show this help message and exit
-  -f INFILE      proxy server list file, default: proxy.txt
-  -n THREADS     Max concurrent threads count, default 10
-  -u URL         target url, default https://www.baidu.com
-  -t TIMEOUT     timeout, default 10 second
-  -a AGENT       User agent string, default:
-                 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46
-  -o OUT         output file for good proxy
-  -d [DOWNLOAD]  Fetch free proxy from url DOWNLOAD, append to file which set by -f argument
-                 The file lines format is ip:port
+options:
+  -h, --help       show this help message and exit
+  -f INFILE        proxy server list file, default: proxy.txt
+  -n THREADS       Max concurrent threads count, default 10
+  -u [URL]         target url, default https://www.baidu.com
+  -t TIMEOUT       timeout, default 10 second
+  -v [VERIFY_URL]  Verify external ip address if match the proxy or not, default: https://api.ipify.org/
+  -a AGENT         User agent string, default:
+                   Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46
+  -o OUT           output file for good proxy
+  -d [DOWNLOAD]    Fetch free proxy from url DOWNLOAD, append to file which set by -f argument
+                   The file lines format is ip:port
 
-File format(Tab separator), type value: socks4 | socks5 | http | https:
-    type        server          port    user    password
-    socks4      5.6.7.8         1080
-    socks5      1.2.3.4         8080    root    1234
-    https       www.xyz.com     443
-    http        www.abc.com     80      dummy   none
 ```
 ## screenshots
 ![img.png](screen.png)
