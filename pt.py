@@ -197,7 +197,6 @@ def main(file, url, timeout, threads, out, verify):
     print("  ×: Can't connect to proxy server at all")
     print("  !: Proxy server port opened but can't be used")
     print("  ¤: Proxy server works but return HTTP error")
-    print("  ¤: Proxy server works but return HTTP error")
     print("  ※: Proxy type error, change proxy type and retry again")
     print("  √: Proxy works fine")
     with open(file, newline='') as csvfile:
