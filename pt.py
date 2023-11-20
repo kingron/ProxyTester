@@ -140,7 +140,7 @@ def test_proxy(proxy_info, url, verify, timeout=5):
         status = '×'
         try:
             socket.create_connection((server, int(port)), timeout=timeout)
-            status = '!'
+            status = '○'
         except:
             return [status, '      ', '            ', f'Connect {server}:{port} failed']
 
@@ -160,12 +160,12 @@ def test_proxy(proxy_info, url, verify, timeout=5):
         if response.status_code != 200:
             preview = "HTTP " + str(response.status_code) + ": " + preview
 
-        return ['√' if response.status_code == 200 else '¤', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
+        return ['√' if response.status_code == 200 else '●', f'{duration:.2f}s'.rjust(6), f'{speed}'.rjust(12), preview]
     except Exception as e:
         if isinstance(e, ValueError) and str(e) == 'check_hostname requires server_hostname':
-            return ['※', '      ', '            ', 'Wrong proxy type, should be HTTP but HTTPS used']
+            return ['▲', '      ', '            ', 'Wrong proxy type, should be HTTP but HTTPS used']
         if isinstance(e, SSLError) and 'WRONG_VERSION_NUMBER' in str(e):
-            return ['※', '      ', '            ', 'Wrong proxy type, should be HTTPS but HTTP used']
+            return ['▲', '      ', '            ', 'Wrong proxy type, should be HTTPS but HTTP used']
 
         s = str(e.args[0].reason if hasattr(e.args[0], "reason") else e)
         s = re.sub(pattern, '', s).strip()
@@ -195,9 +195,9 @@ def main(file, url, timeout, threads, out, verify):
 
     print(f"Scanning for {args.url} with timeout {args.timeout}s and {args.threads} worker(s)...")
     print("  ×: Can't connect to proxy server at all")
-    print("  !: Proxy server port opened but can't be used")
-    print("  ¤: Proxy server works but return HTTP error")
-    print("  ※: Proxy type error, change proxy type and retry again")
+    print("  ○: Proxy server port opened but can't be used")
+    print("  ●: Proxy server works but return HTTP error")
+    print("  ▲: Proxy type error, change proxy type and retry again")
     print("  √: Proxy works fine")
     with open(file, newline='') as csvfile:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=threads)
