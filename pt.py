@@ -53,7 +53,6 @@ def download_proxies(file_name: str, api_url) -> bool:
     paths = [
         ['socks5', 'https://www.proxy-list.download/api/v1/get?type=socks5'],
         ['socks5', 'https://openproxy.space/list/socks5'],
-        ['http', 'https://github.com/fate0/proxylist/blob/master/proxy.list'],
         ['http', 'https://openproxy.space/list/http'],
         ['https', 'https://openproxy.space/list/https'],
         ['http', 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=https&timeout=10000&country=all&ssl=all&anonymity=all'],
@@ -75,7 +74,7 @@ def download_proxies(file_name: str, api_url) -> bool:
             ret = get_proxies(schema, path)
             proxies += ret
             print(f'Fetch proxies from {path.split("/")[2]} success, get {len(ret)} server(s)   ')
-        except Exception as e:
+        except Exception:
             print(f'Fetch proxies from {path.split("/")[2]} failed                 ')
 
     if proxies:
@@ -138,11 +137,18 @@ def test_proxy(proxy_info, url, verify, timeout=5):
                 'https': f'{proxy_type}://{server}:{port}'
             }
 
+        status = '×'
+        try:
+            socket.create_connection((server, int(port)), timeout=timeout)
+            status = '!'
+        except:
+            return [status, '      ', '            ', f'Connect {server}:{port} failed']
+
         if verify and server != '127.0.0.1' and server.lower() != 'localhost':
             response = requests.get(verify, timeout=timeout, headers=headers, proxies=proxies, verify=False)
             ext_ip = response.content.decode('utf-8')
             if ext_ip != (server if is_valid_ip(server) else socket.gethostbyname(server)):
-                return ['×', '      ', '            ', f'IP verify failed, expect: {server}, got: {ext_ip}']
+                return [status, '      ', '            ', f'IP verify failed, expect: {server}, got: {ext_ip}']
 
         start = time.time()
         response = requests.get(url, timeout=timeout, headers=headers, proxies=proxies, verify=False)
@@ -169,7 +175,7 @@ def test_proxy(proxy_info, url, verify, timeout=5):
             s = s[1:-1]  # 去掉前后 '...'
         s = s.replace("'Cannot connect to proxy.',", "Proxy error,")
         s = s.replace("Failed to establish a new connection: ", "")
-        return ['×', '      ', '            ', s]
+        return [status, '      ', '            ', s]
 
 
 def test_task(proxy_info, url, timeout, out, verify):
@@ -188,6 +194,12 @@ def main(file, url, timeout, threads, out, verify):
         return
 
     print(f"Scanning for {args.url} with timeout {args.timeout}s and {args.threads} worker(s)...")
+    print("  ×: Can't connect to proxy server at all")
+    print("  !: Proxy server port opened but can't be used")
+    print("  ¤: Proxy server works but return HTTP error")
+    print("  ¤: Proxy server works but return HTTP error")
+    print("  ※: Proxy type error, change proxy type and retry again")
+    print("  √: Proxy works fine")
     with open(file, newline='') as csvfile:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=threads)
         reader = csv.DictReader(csvfile, delimiter='\t')
